@@ -32,22 +32,22 @@ class WholeCellConsortiumModel:
         self.__MPNG_Metabolite_to_CID = {}
         self.__BRENDA_ligand_name_to_CID = {}
 
-        with open('stores/metabolites.json') as f:
+        with open('../stores/metabolites.json') as f:
             meta_data = json.load(f)
             for x in meta_data:
                 new_meta = MPNG_Metabolite.fromJSON(dict_from_json=json.loads(x))
                 self.__metabolites[new_meta.entry] = new_meta
-        with open('stores/reactions.json') as f:
+        with open('../stores/reactions.json') as f:
             rxn_data = json.load(f)
             for x in rxn_data:
                 new_rxn = MPNG_Reaction.fromJSON(dict_from_json=json.loads(x))
                 self.__reactions[new_rxn.entry] = new_rxn
-        with open('stores/enzymes.json') as f:
+        with open('../stores/enzymes.json') as f:
             enz_data = json.load(f)
             for x in enz_data:
                 new_enz = MPNG_Enzyme.fromJSON(dict_from_json=json.loads(x))
                 self.__enzymes[new_enz.entry] = new_enz
-        with open('stores/KEGG_CIDs.json') as f:
+        with open('../stores/KEGG_CIDs.json') as f:
             self.__MPNG_Metabolite_to_CID = json.load(f)
         print('number of metabolites: ',len(list(self.__metabolites.keys())))
         print('number of reactions: ',len(list(self.__reactions.keys())))
@@ -216,7 +216,7 @@ class WholeCellConsortiumModel:
                 print('CID not found',e)
         print('MPNG_Metabolite_to_CID',self.__MPNG_Metabolite_to_CID)
 
-        with open('stores/KEGG_CIDs.json', 'w', encoding='utf-8') as f:
+        with open('../stores/KEGG_CIDs.json', 'w', encoding='utf-8') as f:
             json.dump(self.__MPNG_Metabolite_to_CID, f, ensure_ascii=False, indent=4)
 
         # NOTE: approach to accumulating the relationships between KEGG and BRENDA compounds/ligands:
@@ -486,7 +486,7 @@ class WholeCellConsortiumModel:
             #     print('enzyme '+enz+' did not work',e)
 
         print('updating reactions.json')
-        with open('stores/reactions.json', 'w', encoding='utf-8') as f:
+        with open('../stores/reactions.json', 'w', encoding='utf-8') as f:
             json.dump(list(map(lambda x: x.toJSON(),list(self.__reactions.values()))), f, ensure_ascii=False, indent=4)
 
     def generate_whole_network(self,network_name:str) -> MetabolicPathwayNetworkGraph:
