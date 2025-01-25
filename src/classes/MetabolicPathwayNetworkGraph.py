@@ -638,22 +638,25 @@ class MetabolicPathwayNetworkGraph:
             #         else:
             #             mdl.reactions.get_by_id(key).lower_bound = 0
 
-            #     # 4.3 Print COBRA model metrics and solve level 3
-            #     print('obj_dict lvl_3',obj_dict)
-            #     mdl.objective = mdl.problem.Objective(Zero, sloppy=True, direction="max")
-            #     mdl.solver.objective.set_linear_coefficients(obj_dict)
-            #     lvl_3_res = self.mass_balance_sln = mdl.optimize()
-            #     print('objective_value lvl_3',lvl_3_res.objective_value)
+            # making R00472 invalid
+            # mdl.reactions.get_by_id('R00472').upper_bound = 0
 
-            #     fluxes_lvl_3 = self.mass_balance_sln.fluxes
-            #     int_fluxes_lvl_3 = fluxes_lvl_3.loc[[x for x in fluxes_lvl_3.index if 'SK_' not in x]]
-            #     bnd_fluxes_lvl_3 = fluxes_lvl_3.loc[[x for x in fluxes_lvl_3.index if 'SK_' in x]]
-            #     rel_int_fluxes_lvl_3 = int_fluxes_lvl_3.loc[[x for x in int_fluxes_lvl_3.index if round(int_fluxes_lvl_3[x]) != 0]]
-            #     rel_bnd_fluxes_lvl_3 = bnd_fluxes_lvl_3.loc[[x for x in bnd_fluxes_lvl_3.index if round(bnd_fluxes_lvl_3[x]) != 0]]
-            #     print('number of internal rxns used (lvl_3): ',(round(int_fluxes_lvl_3)!=0).sum())
-            #     print('number of boundary rxns used (lvl_3): ',(round(bnd_fluxes_lvl_3)!=0).sum())
-            #     print('int_fluxes (lvl_3): ',rel_int_fluxes_lvl_3.to_markdown())
-            #     print('bnd_fluxes (lvl_3): ',rel_bnd_fluxes_lvl_3.to_markdown())
+            # 4.3 Print COBRA model metrics and solve level 3
+            print('obj_dict lvl_3',obj_dict)
+            mdl.objective = mdl.problem.Objective(Zero, sloppy=True, direction="max")
+            mdl.solver.objective.set_linear_coefficients(obj_dict)
+            lvl_3_res = self.mass_balance_sln = mdl.optimize()
+            print('objective_value lvl_3',lvl_3_res.objective_value)
+
+            fluxes_lvl_3 = self.mass_balance_sln.fluxes
+            int_fluxes_lvl_3 = fluxes_lvl_3.loc[[x for x in fluxes_lvl_3.index if 'SK_' not in x]]
+            bnd_fluxes_lvl_3 = fluxes_lvl_3.loc[[x for x in fluxes_lvl_3.index if 'SK_' in x]]
+            rel_int_fluxes_lvl_3 = int_fluxes_lvl_3.loc[[x for x in int_fluxes_lvl_3.index if round(int_fluxes_lvl_3[x]) != 0]]
+            rel_bnd_fluxes_lvl_3 = bnd_fluxes_lvl_3.loc[[x for x in bnd_fluxes_lvl_3.index if round(bnd_fluxes_lvl_3[x]) != 0]]
+            print('number of internal rxns used (lvl_3): ',(round(int_fluxes_lvl_3)!=0).sum())
+            print('number of boundary rxns used (lvl_3): ',(round(bnd_fluxes_lvl_3)!=0).sum())
+            print('int_fluxes (lvl_3): ',rel_int_fluxes_lvl_3.to_markdown())
+            print('bnd_fluxes (lvl_3): ',rel_bnd_fluxes_lvl_3.to_markdown())
 
         # Compare balanced networks that get to target metabolite from each given substrate, try to consolidate into most efficient 
         # pathway that uses some combination of all of the substrate metabolites

@@ -1,4 +1,4 @@
-from src.classes.WholeCellConsortiumModel import WholeCellConsortiumModel
+from classes.WholeCellConsortiumModel import WholeCellConsortiumModel
 
 wccm = WholeCellConsortiumModel()
 wccm.generate_whole_network('test')
