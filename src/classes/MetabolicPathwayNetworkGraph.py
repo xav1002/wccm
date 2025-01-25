@@ -595,65 +595,65 @@ class MetabolicPathwayNetworkGraph:
             print('bnd_fluxes (lvl_2): ',rel_bnd_fluxes_lvl_2.to_markdown())
 
             # 4. If small gas metas are being produced and consumed
-            small_gas_metas_circ = {}
-            small_gas_metas = [mdl.metabolites.get_by_id(x) for x in self.__small_gas_metas]
-            # 4.1 Prevents production of small gas metabolites if exchange is producing, vice versa
-            small_gas_meta_exchange_dir = {}
-            for small_meta in small_gas_metas:
-                if rel_bnd_fluxes_lvl_2.loc['SK_'+small_meta.id] > 0:
-                    small_gas_meta_exchange_dir[small_meta] = 'out'
-                else:
-                    small_gas_meta_exchange_dir[small_meta] = 'in'
-            for rxn in [x for x in rxns_lvl_2 if 'SK_' not in x.id]:
-                stoich = rxn.metabolites
-                subs = []
-                prods = []
-                for key in list(stoich.keys()):
-                    if stoich[key] > 0:
-                        prods.append(key)
-                    elif stoich[key] < 0:
-                        subs.append(key)
-                for meta in small_gas_metas:
-                    if small_gas_meta_exchange_dir[meta] == 'in':
-                        if meta in prods:
-                            small_gas_metas_circ[rxn.id] = 'upper'
-                        elif meta in subs:
-                            small_gas_metas_circ[rxn.id] = 'lower'
-                    else:
-                        if meta in prods:
-                            small_gas_metas_circ[rxn.id] = 'lower'
-                        elif meta in subs:
-                            small_gas_metas_circ[rxn.id] = 'upper'
+            # small_gas_metas_circ = {}
+            # small_gas_metas = [mdl.metabolites.get_by_id(x) for x in self.__small_gas_metas]
+            # # 4.1 Prevents production of small gas metabolites if exchange is producing, vice versa
+            # small_gas_meta_exchange_dir = {}
+            # for small_meta in small_gas_metas:
+            #     if rel_bnd_fluxes_lvl_2.loc['SK_'+small_meta.id] > 0:
+            #         small_gas_meta_exchange_dir[small_meta] = 'out'
+            #     else:
+            #         small_gas_meta_exchange_dir[small_meta] = 'in'
+            # for rxn in [x for x in rxns_lvl_2 if 'SK_' not in x.id]:
+            #     stoich = rxn.metabolites
+            #     subs = []
+            #     prods = []
+            #     for key in list(stoich.keys()):
+            #         if stoich[key] > 0:
+            #             prods.append(key)
+            #         elif stoich[key] < 0:
+            #             subs.append(key)
+            #     for meta in small_gas_metas:
+            #         if small_gas_meta_exchange_dir[meta] == 'in':
+            #             if meta in prods:
+            #                 small_gas_metas_circ[rxn.id] = 'upper'
+            #             elif meta in subs:
+            #                 small_gas_metas_circ[rxn.id] = 'lower'
+            #         else:
+            #             if meta in prods:
+            #                 small_gas_metas_circ[rxn.id] = 'lower'
+            #             elif meta in subs:
+            #                 small_gas_metas_circ[rxn.id] = 'upper'
 
-            for rxn in rxns_lvl_2:
-                print(rxn.id)
-                print(rxn.upper_bound)
-                print(rxn.lower_bound)
+            # for rxn in rxns_lvl_2:
+            #     print(rxn.id)
+            #     print(rxn.upper_bound)
+            #     print(rxn.lower_bound)
 
-            if len(list(small_gas_metas_circ.keys())) > 0:
-                print('restricting fluxes for small gas molecule')
-                for key in list(small_gas_metas_circ.keys()):
-                    if small_gas_metas_circ[key] == 'upper':
-                        mdl.reactions.get_by_id(key).upper_bound = 0
-                    else:
-                        mdl.reactions.get_by_id(key).lower_bound = 0
+            # if len(list(small_gas_metas_circ.keys())) > 0:
+            #     print('restricting fluxes for small gas molecule')
+            #     for key in list(small_gas_metas_circ.keys()):
+            #         if small_gas_metas_circ[key] == 'upper':
+            #             mdl.reactions.get_by_id(key).upper_bound = 0
+            #         else:
+            #             mdl.reactions.get_by_id(key).lower_bound = 0
 
-                # 4.3 Print COBRA model metrics and solve level 3
-                print('obj_dict lvl_3',obj_dict)
-                mdl.objective = mdl.problem.Objective(Zero, sloppy=True, direction="max")
-                mdl.solver.objective.set_linear_coefficients(obj_dict)
-                lvl_3_res = self.mass_balance_sln = mdl.optimize()
-                print('objective_value lvl_3',lvl_3_res.objective_value)
+            #     # 4.3 Print COBRA model metrics and solve level 3
+            #     print('obj_dict lvl_3',obj_dict)
+            #     mdl.objective = mdl.problem.Objective(Zero, sloppy=True, direction="max")
+            #     mdl.solver.objective.set_linear_coefficients(obj_dict)
+            #     lvl_3_res = self.mass_balance_sln = mdl.optimize()
+            #     print('objective_value lvl_3',lvl_3_res.objective_value)
 
-                fluxes_lvl_3 = self.mass_balance_sln.fluxes
-                int_fluxes_lvl_3 = fluxes_lvl_3.loc[[x for x in fluxes_lvl_3.index if 'SK_' not in x]]
-                bnd_fluxes_lvl_3 = fluxes_lvl_3.loc[[x for x in fluxes_lvl_3.index if 'SK_' in x]]
-                rel_int_fluxes_lvl_3 = int_fluxes_lvl_3.loc[[x for x in int_fluxes_lvl_3.index if round(int_fluxes_lvl_3[x]) != 0]]
-                rel_bnd_fluxes_lvl_3 = bnd_fluxes_lvl_3.loc[[x for x in bnd_fluxes_lvl_3.index if round(bnd_fluxes_lvl_3[x]) != 0]]
-                print('number of internal rxns used (lvl_3): ',(round(int_fluxes_lvl_3)!=0).sum())
-                print('number of boundary rxns used (lvl_3): ',(round(bnd_fluxes_lvl_3)!=0).sum())
-                print('int_fluxes (lvl_3): ',rel_int_fluxes_lvl_3.to_markdown())
-                print('bnd_fluxes (lvl_3): ',rel_bnd_fluxes_lvl_3.to_markdown())
+            #     fluxes_lvl_3 = self.mass_balance_sln.fluxes
+            #     int_fluxes_lvl_3 = fluxes_lvl_3.loc[[x for x in fluxes_lvl_3.index if 'SK_' not in x]]
+            #     bnd_fluxes_lvl_3 = fluxes_lvl_3.loc[[x for x in fluxes_lvl_3.index if 'SK_' in x]]
+            #     rel_int_fluxes_lvl_3 = int_fluxes_lvl_3.loc[[x for x in int_fluxes_lvl_3.index if round(int_fluxes_lvl_3[x]) != 0]]
+            #     rel_bnd_fluxes_lvl_3 = bnd_fluxes_lvl_3.loc[[x for x in bnd_fluxes_lvl_3.index if round(bnd_fluxes_lvl_3[x]) != 0]]
+            #     print('number of internal rxns used (lvl_3): ',(round(int_fluxes_lvl_3)!=0).sum())
+            #     print('number of boundary rxns used (lvl_3): ',(round(bnd_fluxes_lvl_3)!=0).sum())
+            #     print('int_fluxes (lvl_3): ',rel_int_fluxes_lvl_3.to_markdown())
+            #     print('bnd_fluxes (lvl_3): ',rel_bnd_fluxes_lvl_3.to_markdown())
 
         # Compare balanced networks that get to target metabolite from each given substrate, try to consolidate into most efficient 
         # pathway that uses some combination of all of the substrate metabolites
