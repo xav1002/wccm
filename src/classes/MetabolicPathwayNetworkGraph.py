@@ -599,6 +599,9 @@ class MetabolicPathwayNetworkGraph:
             small_gas_metas = [mdl.metabolites.get_by_id(x) for x in self.__small_gas_metas]
             # 4.1 Prevents production of small gas metabolites if exchange is producing, vice versa
             small_gas_meta_exchange_dir = {}
+            print('test3',rel_bnd_fluxes_lvl_2.index)
+            print('test2',rel_bnd_fluxes_lvl_2.index.values)
+            print('test',[x for x in small_gas_metas if 'SK_'+small_meta.id in rel_bnd_fluxes_lvl_2.index.values])
             for small_meta in [x for x in small_gas_metas if 'SK_'+small_meta.id in rel_bnd_fluxes_lvl_2.index.values]:
                 if rel_bnd_fluxes_lvl_2.loc['SK_'+small_meta.id] > 0:
                     small_gas_meta_exchange_dir[small_meta] = 'out'
