@@ -32,7 +32,7 @@ class WholeCellConsortiumModel:
         self.__MPNG_Metabolite_to_CID = {}
         self.__BRENDA_ligand_name_to_CID = {}
 
-        with open('../stores/metabolites.json') as f:
+        with open('src\\stores\\metabolites.json') as f:
             meta_data = json.load(f)
             for x in meta_data:
                 new_meta = MPNG_Metabolite.fromJSON(dict_from_json=json.loads(x))
