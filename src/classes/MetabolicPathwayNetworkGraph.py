@@ -595,55 +595,56 @@ class MetabolicPathwayNetworkGraph:
             print('bnd_fluxes (lvl_2): ',rel_bnd_fluxes_lvl_2.to_markdown())
 
             # 4. If small gas metas are being produced and consumed
-            small_gas_metas_circ = {}
-            small_gas_metas = [mdl.metabolites.get_by_id(x) for x in self.__small_gas_metas]
-            # 4.1 Prevents production of small gas metabolites if exchange is producing, vice versa
-            small_gas_meta_exchange_dir = {}
-            print('test3',rel_bnd_fluxes_lvl_2.index)
-            print('test2',rel_bnd_fluxes_lvl_2.index.values)
-            print('test',[x for x in small_gas_metas if 'SK_'+small_meta.id in rel_bnd_fluxes_lvl_2.index.values])
-            for small_meta in [x for x in small_gas_metas if 'SK_'+small_meta.id in rel_bnd_fluxes_lvl_2.index.values]:
-                if rel_bnd_fluxes_lvl_2.loc['SK_'+small_meta.id] > 0:
-                    small_gas_meta_exchange_dir[small_meta] = 'out'
-                else:
-                    small_gas_meta_exchange_dir[small_meta] = 'in'
-            print('rxns that are edited',[x for x in rxns_lvl_2 if 'SK_' not in x.id])
-            for rxn in [x for x in rxns_lvl_2 if 'SK_' not in x.id]:
-                stoich = rxn.metabolites
-                subs = []
-                prods = []
-                for key in list(stoich.keys()):
-                    if stoich[key] > 0:
-                        prods.append(key)
-                    elif stoich[key] < 0:
-                        subs.append(key)
-                for meta in [x for x in small_gas_metas if x in list(small_gas_meta_exchange_dir.keys())]:
-                    if small_gas_meta_exchange_dir[meta] == 'in':
-                        if meta in prods:
-                            small_gas_metas_circ[rxn.id] = 'upper'
-                        elif meta in subs:
-                            small_gas_metas_circ[rxn.id] = 'lower'
-                    else:
-                        if meta in prods:
-                            small_gas_metas_circ[rxn.id] = 'lower'
-                        elif meta in subs:
-                            small_gas_metas_circ[rxn.id] = 'upper'
+            # small_gas_metas_circ = {}
+            # small_gas_metas = [mdl.metabolites.get_by_id(x) for x in self.__small_gas_metas]
+            # # 4.1 Prevents production of small gas metabolites if exchange is producing, vice versa
+            # small_gas_meta_exchange_dir = {}
+            # print('test3',rel_bnd_fluxes_lvl_2.index)
+            # print('test2',rel_bnd_fluxes_lvl_2.index.values)
+            # print('test',[x for x in small_gas_metas if 'SK_'+x.id in list(rel_bnd_fluxes_lvl_2.index.values)])
+            # for small_meta in [x for x in small_gas_metas if 'SK_'+x.id in list(rel_bnd_fluxes_lvl_2.index.values)]:
+            #     if rel_bnd_fluxes_lvl_2.loc['SK_'+small_meta.id] > 0:
+            #         small_gas_meta_exchange_dir[small_meta] = 'out'
+            #     else:
+            #         small_gas_meta_exchange_dir[small_meta] = 'in'
+            # print('rxns that are edited',[x for x in rxns_lvl_2 if 'SK_' not in x.id])
+            # for rxn in [x for x in rxns_lvl_2 if 'SK_' not in x.id]:
+            #     stoich = rxn.metabolites
+            #     subs = []
+            #     prods = []
+            #     for key in list(stoich.keys()):
+            #         if stoich[key] > 0:
+            #             prods.append(key)
+            #         elif stoich[key] < 0:
+            #             subs.append(key)
+            #     for meta in [x for x in small_gas_metas if x in list(small_gas_meta_exchange_dir.keys())]:
+            #         if small_gas_meta_exchange_dir[meta] == 'in':
+            #             if meta in prods:
+            #                 small_gas_metas_circ[rxn.id] = 'upper'
+            #             elif meta in subs:
+            #                 small_gas_metas_circ[rxn.id] = 'lower'
+            #         else:
+            #             if meta in prods:
+            #                 small_gas_metas_circ[rxn.id] = 'lower'
+            #             elif meta in subs:
+            #                 small_gas_metas_circ[rxn.id] = 'upper'
 
-            for rxn in rxns_lvl_2:
-                print(rxn.id)
-                print(rxn.upper_bound)
-                print(rxn.lower_bound)
+            # for rxn in rxns_lvl_2:
+            #     print(rxn.id)
+            #     print(rxn.upper_bound)
+            #     print(rxn.lower_bound)
 
-            if len(list(small_gas_metas_circ.keys())) > 0:
-                print('restricting fluxes for small gas molecule')
-                for key in list(small_gas_metas_circ.keys()):
-                    if small_gas_metas_circ[key] == 'upper':
-                        mdl.reactions.get_by_id(key).upper_bound = 0
-                    else:
-                        mdl.reactions.get_by_id(key).lower_bound = 0
+            # if len(list(small_gas_metas_circ.keys())) > 0:
+            #     print('restricting fluxes for small gas molecule')
+            #     for key in list(small_gas_metas_circ.keys()):
+            #         if small_gas_metas_circ[key] == 'upper':
+            #             mdl.reactions.get_by_id(key).upper_bound = 0
+            #         else:
+            #             mdl.reactions.get_by_id(key).lower_bound = 0
 
             # making R00472 invalid
-            # mdl.reactions.get_by_id('R00472').upper_bound = 0
+            mdl.reactions.get_by_id('R13223').upper_bound = 0
+            mdl.reactions.get_by_id('R13223').lower_bound = 0
 
             # 4.3 Print COBRA model metrics and solve level 3
             print('obj_dict lvl_3',obj_dict)
