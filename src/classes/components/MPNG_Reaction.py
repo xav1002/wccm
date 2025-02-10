@@ -5,8 +5,8 @@ from cobra import Metabolite
 import json
 from equilibrator_api import ComponentContribution, Reaction
 
-from classes.components.MPNG_Metabolite import MPNG_Metabolite
-from classes.components.MPNG_Enzyme import MPNG_Enzyme
+from src.classes.components.MPNG_Metabolite import MPNG_Metabolite
+from src.classes.components.MPNG_Enzyme import MPNG_Enzyme
 
 class MPNG_Reaction:
 
@@ -85,9 +85,17 @@ class MPNG_Reaction:
     def forward_valid(self) -> bool:
         return self.__forward_valid
 
+    @forward_valid.setter
+    def forward_valid(self,valid:bool) -> None:
+        self.__forward_valid = valid
+
     @property
     def backward_valid(self) -> bool:
         return self.__backward_valid
+
+    @backward_valid.setter
+    def backward_valid(self,valid:bool) -> None:
+        self.__backward_valid = valid
 
     def check_reversibility(self,enz_entry:str,rev_dict:dict[str,bool]) -> None:
         print('rev_dict',rev_dict)

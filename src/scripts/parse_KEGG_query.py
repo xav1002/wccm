@@ -5,9 +5,9 @@ import time
 from equilibrator_api import ComponentContribution
 import math
 
-from classes.components.MPNG_Metabolite import MPNG_Metabolite
-from classes.components.MPNG_Reaction import MPNG_Reaction
-from classes.components.MPNG_Enzyme import MPNG_Enzyme
+from src.classes.components.MPNG_Metabolite import MPNG_Metabolite
+from src.classes.components.MPNG_Reaction import MPNG_Reaction
+from src.classes.components.MPNG_Enzyme import MPNG_Enzyme
 
 def parse_KEGG(query_items:list[str]) -> MPNG_Metabolite | MPNG_Reaction | MPNG_Enzyme:
     query_items_all = []

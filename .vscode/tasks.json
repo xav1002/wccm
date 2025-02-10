@@ -19,7 +19,7 @@
 				"docker-build"
 			],
 			"python": {
-				"file": "src\\scripts\\entry_point.py"
+				"file": "entry_point.py"
 			}
 		}
 	]
