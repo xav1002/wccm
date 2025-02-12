@@ -457,13 +457,13 @@ class MetabolicPathwayNetworkGraph:
             # 3.1 Restricting to relevant reactions based on previous mass balance solution
             print('starting optimization lvl_2...',rel_int_fluxes_lvl_1.index)
             ### STARTHERE: make second model
-            lvl_2_mdl = Model('lvl_2_mdl')
+            # mdl = Model('mdl')
             rxns_lvl_2 = [x for x in mdl.reactions if x.id in list(rel_int_fluxes_lvl_1.index)]
-            bnd_rxns_lvl_2 = [x for x in mdl.reactions if x.id in list(rel_bnd_fluxes_lvl_1.index)]
-            lvl_2_mdl.add_reactions(rxns_lvl_2+bnd_rxns_lvl_2)
-            # for rxn in [x for x in mdl.reactions if x not in rxns_lvl_2 and x not in mdl.boundary]:
-            #     mdl.reactions.get_by_id(rxn.id).lower_bound = 0
-            #     mdl.reactions.get_by_id(rxn.id).upper_bound = 0
+            # bnd_rxns_lvl_2 = [x for x in mdl.reactions if x.id in list(rel_bnd_fluxes_lvl_1.index)]
+            # mdl.add_reactions(rxns_lvl_2+bnd_rxns_lvl_2)
+            for rxn in [x for x in mdl.reactions if x not in rxns_lvl_2 and x not in mdl.boundary]:
+                mdl.reactions.get_by_id(rxn.id).lower_bound = 0
+                mdl.reactions.get_by_id(rxn.id).upper_bound = 0
             print('finished restricting to relevant reactions')
 
             # 3.2 Generating optimization target based on reaction dG
@@ -482,6 +482,7 @@ class MetabolicPathwayNetworkGraph:
                 print('rxn_entry',rxn.id)
                 for meta in rxn_meta_keys:
                     rxn_dict[self.__cc.get_compound(f"kegg:{meta.id}")] = rxn.metabolites[rxn_meta_keys[compound_ids.index(meta.id)]]
+                    print('rxn_2',rxn_meta_keys,compound_ids.index(meta.id),self.__cc.get_compound(f"kegg:{meta.id}"),rxn.metabolites[rxn_meta_keys[compound_ids.index(meta.id)]])
                 try:
                     eqi_rxn = eq.Reaction(rxn_dict)
                     dGr = abs(self.__cc.dg_prime(eqi_rxn).value.m_as("kJ/mol"))
@@ -496,14 +497,14 @@ class MetabolicPathwayNetworkGraph:
                 if dGr_dict[rxn] >= 0:
                     dGr_val = dGr_dict[rxn]/dGr_max
                 else:
-                    dGr_val = 1
+                    dGr_val = 0
                 print('test',dGr_val)
                 new_var = mdl.problem.Variable('abs_dGr_'+rxn.id)
                 new_constraint = mdl.problem.Constraint(rxn.forward_variable*dGr_val + rxn.reverse_variable*dGr_val - new_var,
                                         name='abs_dGr_constraint_'+rxn.id,
                                         ub=0,
                                         lb=0)
-                lvl_2_mdl.add_cons_vars([new_var,new_constraint])
+                mdl.add_cons_vars([new_var,new_constraint])
                 obj_dict[new_var] = -1
                 # obj_dict[new_var] = -10
 
@@ -539,7 +540,7 @@ class MetabolicPathwayNetworkGraph:
                     pass
 
             # 3.4 setting target metabolite flux optimization
-            rxn: Reaction = lvl_2_mdl.reactions.get_by_id('SK_'+objective_meta_entry)
+            rxn: Reaction = mdl.reactions.get_by_id('SK_'+objective_meta_entry)
             obj_dict[rxn.forward_variable] = len(list(dGr_dict.keys()))
             obj_dict[rxn.reverse_variable] = -len(list(dGr_dict.keys()))
 
@@ -602,9 +603,9 @@ class MetabolicPathwayNetworkGraph:
 
             # 3.8 Print COBRA model metrics and solve level 2
             print('obj_dict lvl_2',obj_dict)
-            lvl_2_mdl.objective = lvl_2_mdl.problem.Objective(Zero, sloppy=True, direction="max")
-            lvl_2_mdl.solver.objective.set_linear_coefficients(obj_dict)
-            lvl_2_res = self.mass_balance_sln = lvl_2_mdl.optimize()
+            mdl.objective = mdl.problem.Objective(Zero, sloppy=True, direction="max")
+            mdl.solver.objective.set_linear_coefficients(obj_dict)
+            lvl_2_res = self.mass_balance_sln = mdl.optimize()
             print('objective_value lvl_2',lvl_2_res.objective_value)
 
             fluxes_lvl_2 = self.mass_balance_sln.fluxes
@@ -618,10 +619,10 @@ class MetabolicPathwayNetworkGraph:
             print('bnd_fluxes (lvl_2): ',rel_bnd_fluxes_lvl_2.to_markdown())
 
             print('starting optimization lvl_3...',rel_int_fluxes_lvl_2.index)
-            rxns_lvl_3 = [x for x in lvl_2_mdl.reactions if x.id in list(rel_int_fluxes_lvl_2.index)]
-            for rxn in [x for x in lvl_2_mdl.reactions if x not in rxns_lvl_3 and x not in lvl_2_mdl.boundary]:
-                lvl_2_mdl.reactions.get_by_id(rxn.id).lower_bound = 0
-                lvl_2_mdl.reactions.get_by_id(rxn.id).upper_bound = 0
+            rxns_lvl_3 = [x for x in mdl.reactions if x.id in list(rel_int_fluxes_lvl_2.index)]
+            for rxn in [x for x in mdl.reactions if x not in rxns_lvl_3 and x not in mdl.boundary]:
+                mdl.reactions.get_by_id(rxn.id).lower_bound = 0
+                mdl.reactions.get_by_id(rxn.id).upper_bound = 0
             print('finished restricting to relevant reactions')
 
             # 4. If small gas metas are being produced and consumed
@@ -686,18 +687,18 @@ class MetabolicPathwayNetworkGraph:
                 non_maxed_target_fluxes = [x for x in max_prod_rxn_ids if x != max_flux_rxn_id]
                 print('max_prod_rxn_2',non_maxed_target_fluxes)
 
-                # for rxn_id in non_maxed_target_fluxes:
-                #     mdl.reactions.get_by_id(rxn_id).upper_bound = 0
-                #     mdl.reactions.get_by_id(rxn_id).lower_bound = 0
+                for rxn_id in non_maxed_target_fluxes:
+                    mdl.reactions.get_by_id(rxn_id).upper_bound = 0
+                    mdl.reactions.get_by_id(rxn_id).lower_bound = 0
 
-                obj_dict[lvl_2_mdl.reactions.get_by_id(max_flux_rxn_id).forward_variable] = len(list(dGr_dict.keys()))
-                obj_dict[lvl_2_mdl.reactions.get_by_id(max_flux_rxn_id).reverse_variable] = -len(list(dGr_dict.keys()))
+                # obj_dict[mdl.reactions.get_by_id(max_flux_rxn_id).forward_variable] = len(list(dGr_dict.keys()))
+                # obj_dict[mdl.reactions.get_by_id(max_flux_rxn_id).reverse_variable] = -len(list(dGr_dict.keys()))
 
                 # 4.3 Print COBRA model metrics and solve level 3
                 print('obj_dict lvl_3',obj_dict)
-                lvl_2_mdl.objective = lvl_2_mdl.problem.Objective(Zero, sloppy=True, direction="max")
-                lvl_2_mdl.solver.objective.set_linear_coefficients(obj_dict)
-                lvl_3_res = self.mass_balance_sln = lvl_2_mdl.optimize()
+                mdl.objective = mdl.problem.Objective(Zero, sloppy=True, direction="max")
+                mdl.solver.objective.set_linear_coefficients(obj_dict)
+                lvl_3_res = self.mass_balance_sln = mdl.optimize()
                 print('objective_value lvl_3',lvl_3_res.objective_value)
 
                 fluxes_lvl_3 = self.mass_balance_sln.fluxes
