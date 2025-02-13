@@ -369,6 +369,7 @@ class MetabolicPathwayNetworkGraph:
             obj_dict = {}
             # 2.1 Create optimization objective for reactions on path
             path_opt_vars = []
+            rxns_lvl_2 = []
             for idx,path in enumerate(candidate_paths):
                 print('Creating optimization objective for path #',idx+1)
                 for node in path:
@@ -377,27 +378,30 @@ class MetabolicPathwayNetworkGraph:
                         rxn: Reaction = mdl.reactions.get_by_id(rxn_entry)
                         # here, the optimization stoichiometry is flipped because the pathway seeking starts from target  
                         # and seeks towards substrates
+                        ### STARTHERE: try 0
                         if path_direction == 'r':
-                            obj_dict[rxn.forward_variable] = 2
-                            obj_dict[rxn.reverse_variable] = -2
+                            obj_dict[rxn.forward_variable] = 1
+                            obj_dict[rxn.reverse_variable] = -1
                         else:
-                            obj_dict[rxn.forward_variable] = -2
-                            obj_dict[rxn.reverse_variable] = 2
+                            obj_dict[rxn.forward_variable] = -1
+                            obj_dict[rxn.reverse_variable] = 1
                         path_opt_vars.append(rxn.forward_variable)
                         path_opt_vars.append(rxn.reverse_variable)
+                        rxns_lvl_2.append(rxn)
 
             # 2.2 Create optimization for objective metabolite exchange reaction
             rxn: Reaction = mdl.reactions.get_by_id('SK_'+objective_meta_entry)
-            obj_dict[rxn.forward_variable] = 2
-            obj_dict[rxn.reverse_variable] = -2
+            # obj_weight = len(mdl.reactions)/1200
+            obj_weight = 15
+            obj_dict[rxn.forward_variable] = obj_weight
+            obj_dict[rxn.reverse_variable] = -obj_weight
 
             # 2.3 Create optimization objective for substrate exchange reactions
-            # STARTHERE: is this needed?
             substrate_opt_vars = []
             for sub_meta_entry in substrate_meta_entries:
                 rxn: Reaction = mdl.reactions.get_by_id('SK_'+sub_meta_entry)
-                obj_dict[rxn.forward_variable] = -1
-                obj_dict[rxn.reverse_variable] = 1
+                obj_dict[rxn.forward_variable] = obj_weight
+                obj_dict[rxn.reverse_variable] = obj_weight
                 substrate_opt_vars.append(rxn.forward_variable)
                 substrate_opt_vars.append(rxn.reverse_variable)
 
@@ -431,41 +435,6 @@ class MetabolicPathwayNetworkGraph:
                 elif target_meta in subs:
                     mdl.reactions.get_by_id(rxn.id).upper_bound = 0
 
-            # 2.6 Restricting non-reversible reactions
-            # mdl.reactions.get_by_id('R00319').lower_bound = 0
-            # mdl.reactions.get_by_id('R03145').lower_bound = 0
-            # mdl.reactions.get_by_id('R11074').lower_bound = 0
-
-            # 2.7 Print COBRA model metrics and solve level 1
-            print('obj_dict lvl_1',obj_dict)
-            mdl.objective = mdl.problem.Objective(Zero, sloppy=True, direction="max")
-            mdl.solver.objective.set_linear_coefficients(obj_dict)
-            lvl_1_res = self.mass_balance_sln = mdl.optimize()
-            print('objective_value lvl_1',lvl_1_res.objective_value)
-
-            fluxes_lvl_1 = self.mass_balance_sln.fluxes
-            int_fluxes_lvl_1 = fluxes_lvl_1.loc[[x for x in fluxes_lvl_1.index if 'SK_' not in x]]
-            bnd_fluxes_lvl_1 = fluxes_lvl_1.loc[[x for x in fluxes_lvl_1.index if 'SK_' in x]]
-            rel_int_fluxes_lvl_1 = int_fluxes_lvl_1.loc[[x for x in int_fluxes_lvl_1.index if round(int_fluxes_lvl_1[x]) != 0]]
-            rel_bnd_fluxes_lvl_1 = bnd_fluxes_lvl_1.loc[[x for x in bnd_fluxes_lvl_1.index if round(bnd_fluxes_lvl_1[x]) != 0]]
-            print('number of internal rxns used (lvl_1): ',(round(int_fluxes_lvl_1)!=0).sum())
-            print('number of boundary rxns used (lvl_1): ',(round(bnd_fluxes_lvl_1)!=0).sum())
-            print('int_fluxes (lvl_1): ',rel_int_fluxes_lvl_1.to_markdown())
-            print('bnd_fluxes (lvl_1): ',rel_bnd_fluxes_lvl_1.to_markdown())
-
-            # 3. If solution exists, try finding all independent balanced networks
-            # 3.1 Restricting to relevant reactions based on previous mass balance solution
-            print('starting optimization lvl_2...',rel_int_fluxes_lvl_1.index)
-            ### STARTHERE: make second model
-            # mdl = Model('mdl')
-            rxns_lvl_2 = [x for x in mdl.reactions if x.id in list(rel_int_fluxes_lvl_1.index)]
-            # bnd_rxns_lvl_2 = [x for x in mdl.reactions if x.id in list(rel_bnd_fluxes_lvl_1.index)]
-            # mdl.add_reactions(rxns_lvl_2+bnd_rxns_lvl_2)
-            for rxn in [x for x in mdl.reactions if x not in rxns_lvl_2 and x not in mdl.boundary]:
-                mdl.reactions.get_by_id(rxn.id).lower_bound = 0
-                mdl.reactions.get_by_id(rxn.id).upper_bound = 0
-            print('finished restricting to relevant reactions')
-
             # 3.2 Generating optimization target based on reaction dG
             # and removing minimization of total flux
             dGr_dict = {}
@@ -482,7 +451,7 @@ class MetabolicPathwayNetworkGraph:
                 print('rxn_entry',rxn.id)
                 for meta in rxn_meta_keys:
                     rxn_dict[self.__cc.get_compound(f"kegg:{meta.id}")] = rxn.metabolites[rxn_meta_keys[compound_ids.index(meta.id)]]
-                    print('rxn_2',rxn_meta_keys,compound_ids.index(meta.id),self.__cc.get_compound(f"kegg:{meta.id}"),rxn.metabolites[rxn_meta_keys[compound_ids.index(meta.id)]])
+                    # print('rxn_2',rxn_meta_keys,compound_ids.index(meta.id),self.__cc.get_compound(f"kegg:{meta.id}"),rxn.metabolites[rxn_meta_keys[compound_ids.index(meta.id)]])
                 try:
                     eqi_rxn = eq.Reaction(rxn_dict)
                     dGr = abs(self.__cc.dg_prime(eqi_rxn).value.m_as("kJ/mol"))
@@ -506,85 +475,33 @@ class MetabolicPathwayNetworkGraph:
                                         lb=0)
                 mdl.add_cons_vars([new_var,new_constraint])
                 obj_dict[new_var] = -1
-                # obj_dict[new_var] = -10
 
-            # 3.3 preventing the flux of reactions in direction that consume target metabolite
-            # target_meta = mdl.metabolites.get_by_id(objective_meta_entry)
-            # for rxn in rxns_lvl_2:
-            #     stoich = rxn.metabolites
-            #     subs = []
-            #     prods = []
-            #     for key in list(stoich.keys()):
-            #         if stoich[key] > 0:
-            #             prods.append(key)
-            #         elif stoich[key] < 0:
-            #             subs.append(key)
-            #     if target_meta in prods:
-            #         rxn.upper_bound = 0
-            #     elif target_meta in subs:
-            #         rxn.lower_bound = 0
-
-            print('removing total flux minimization variables and constraints...')
-            # mdl.remove_cons_vars([tot_flux_vars,tot_flux_consts])
-            for var in tot_flux_vars:
-                del obj_dict[var]
-            for var in path_opt_vars:
-                try:
-                    del obj_dict[var]
-                except Exception as e:
-                    pass
-            for var in substrate_opt_vars:
-                try:
-                    del obj_dict[var]
-                except Exception as e:
-                    pass
+            # print('removing total flux minimization variables and constraints...')
+            # # mdl.remove_cons_vars([tot_flux_vars,tot_flux_consts])
+            # for var in tot_flux_vars:
+            #     del obj_dict[var]
+            # for var in path_opt_vars:
+            #     try:
+            #         del obj_dict[var]
+            #     except Exception as e:
+            #         pass
+            # for var in substrate_opt_vars:
+            #     try:
+            #         del obj_dict[var]
+            #     except Exception as e:
+            #         pass
 
             # 3.4 setting target metabolite flux optimization
-            rxn: Reaction = mdl.reactions.get_by_id('SK_'+objective_meta_entry)
-            obj_dict[rxn.forward_variable] = len(list(dGr_dict.keys()))
-            obj_dict[rxn.reverse_variable] = -len(list(dGr_dict.keys()))
+            # rxn: Reaction = mdl.reactions.get_by_id('SK_'+objective_meta_entry)
+            # obj_dict[rxn.forward_variable] = len(list(dGr_dict.keys()))
+            # obj_dict[rxn.reverse_variable] = -len(list(dGr_dict.keys()))
 
-            print('removed total flux minimization variables and constraints')
+            # print('removed total flux minimization variables and constraints')
 
             # 3.4 Generating optimization target based on enzyme alternative reactions
 
-            # 3.5 Shutting down reactions that are below minimum theoretical stoichiometry
-            # max_stoich_val = 0
-            # for rxn in rxns_lvl_2:
-            #     stoich_vals = list(rxn.metabolites.values())
-            #     for val in stoich_vals:
-            #         if val > max_stoich_val:
-            #             max_stoich_val = val
-
-            # minor_rxn_entries = [x for x in int_fluxes_lvl_1.index if abs(round(int_fluxes_lvl_1[x])) < 1000/max_stoich_val and x in list(map(lambda y: y.id,rxns_lvl_2))]
-            # print('minor_rxn_entries',max_stoich_val,minor_rxn_entries)
-            # for rxn_entry in minor_rxn_entries:
-            #     mdl.reactions.get_by_id(rxn_entry).upper_bound = 0
-            #     mdl.reactions.get_by_id(rxn_entry).lower_bound = 0
-
             # 3.6 Restricts target metabolite production to only the reactions that have the greatest production flux
-            direct_target_prod_rxns = {}
-            for rxn in rxns_lvl_2:
-                stoich = rxn.metabolites
-                subs = []
-                prods = []
-                for key in list(stoich.keys()):
-                    if stoich[key] > 0:
-                        prods.append(key)
-                    elif stoich[key] < 0:
-                        subs.append(key)
-                if target_meta in prods or target_meta in subs:
-                    direct_target_prod_rxns[rxn] = int_fluxes_lvl_1[rxn.id]
-
-            # print('test3',list(direct_target_prod_rxns.values()))
-            # max_direct_target_prod_flux = max(list(direct_target_prod_rxns.values()))
-            # for rxn in list(direct_target_prod_rxns.keys()):
-            #     if direct_target_prod_rxns[rxn] < max_direct_target_prod_flux:
-            #         mdl.reactions.get_by_id(rxn.id).upper_bound = 0
-            #         mdl.reactions.get_by_id(rxn.id).lower_bound = 0
-
-            # 3.7 Shutting down fluxes that produce substrate metabolites
-            # substrate_metas = [mdl.metabolites.get_by_id(x) for x in substrate_meta_entries]
+            # direct_target_prod_rxns = {}
             # for rxn in rxns_lvl_2:
             #     stoich = rxn.metabolites
             #     subs = []
@@ -594,89 +511,57 @@ class MetabolicPathwayNetworkGraph:
             #             prods.append(key)
             #         elif stoich[key] < 0:
             #             subs.append(key)
-            #     for meta in substrate_metas:
-            #         print('subs and prods',meta,subs,prods)
-            #         if meta in prods:
-            #             mdl.reactions.get_by_id(rxn.id).upper_bound = 0
-            #         elif meta in subs:
-            #             mdl.reactions.get_by_id(rxn.id).lower_bound = 0
+            #     if target_meta in prods or target_meta in subs:
+            #         direct_target_prod_rxns[rxn] = int_fluxes_lvl_1[rxn.id]
 
-            # 3.8 Print COBRA model metrics and solve level 2
-            print('obj_dict lvl_2',obj_dict)
+            # 4.1 choose the production pathway of target meta that generates the highest yield
+            # max_target_meta_prod_rxn = {}
+            # for rxn in [x for x in rxns_lvl_3 if 'SK_' not in x.id]:
+            #     if objective_meta_entry in list(map(lambda y: y.id,list(rxn.metabolites.keys()))):
+            #         max_target_meta_prod_rxn[rxn.id] = abs(rel_int_fluxes_lvl_2.loc[rxn.id])
+            #         print('max',max_target_meta_prod_rxn)
+
+            # max_prod_rxn_ids = list(max_target_meta_prod_rxn.keys())
+            # print('max_prod_rxn_ids',max_prod_rxn_ids)
+            # if len(max_prod_rxn_ids) > 1:
+            #     max_flux_rxn_id = max(max_target_meta_prod_rxn,key=max_target_meta_prod_rxn.get)
+            #     print('test3',max_flux_rxn_id)
+            #     non_maxed_target_fluxes = [x for x in max_prod_rxn_ids if x != max_flux_rxn_id]
+            #     print('max_prod_rxn_2',non_maxed_target_fluxes)
+
+            #     for rxn_id in non_maxed_target_fluxes:
+            #         mdl.reactions.get_by_id(rxn_id).upper_bound = 0
+            #         mdl.reactions.get_by_id(rxn_id).lower_bound = 0
+
+            # 2.7 Print COBRA model metrics and solve level 1
+            print('obj_dict lvl_1',obj_dict)
             mdl.objective = mdl.problem.Objective(Zero, sloppy=True, direction="max")
             mdl.solver.objective.set_linear_coefficients(obj_dict)
-            lvl_2_res = self.mass_balance_sln = mdl.optimize()
-            print('objective_value lvl_2',lvl_2_res.objective_value)
+            lvl_1_res = self.mass_balance_sln = mdl.optimize()
+            print('objective_value lvl_1',lvl_1_res.objective_value)
 
-            fluxes_lvl_2 = self.mass_balance_sln.fluxes
-            int_fluxes_lvl_2 = fluxes_lvl_2.loc[[x for x in fluxes_lvl_2.index if 'SK_' not in x]]
-            bnd_fluxes_lvl_2 = fluxes_lvl_2.loc[[x for x in fluxes_lvl_2.index if 'SK_' in x]]
-            rel_int_fluxes_lvl_2 = int_fluxes_lvl_2.loc[[x for x in int_fluxes_lvl_2.index if round(int_fluxes_lvl_2[x]) != 0]]
-            rel_bnd_fluxes_lvl_2 = bnd_fluxes_lvl_2.loc[[x for x in bnd_fluxes_lvl_2.index if round(bnd_fluxes_lvl_2[x]) != 0]]
-            print('number of internal rxns used (lvl_2): ',(round(int_fluxes_lvl_2)!=0).sum())
-            print('number of boundary rxns used (lvl_2): ',(round(bnd_fluxes_lvl_2)!=0).sum())
-            print('int_fluxes (lvl_2): ',rel_int_fluxes_lvl_2.to_markdown())
-            print('bnd_fluxes (lvl_2): ',rel_bnd_fluxes_lvl_2.to_markdown())
+            fluxes_lvl_1 = self.mass_balance_sln.fluxes
+            int_fluxes_lvl_1 = fluxes_lvl_1.loc[[x for x in fluxes_lvl_1.index if 'SK_' not in x]]
+            bnd_fluxes_lvl_1 = fluxes_lvl_1.loc[[x for x in fluxes_lvl_1.index if 'SK_' in x]]
+            rel_int_fluxes_lvl_1 = int_fluxes_lvl_1.loc[[x for x in int_fluxes_lvl_1.index if round(int_fluxes_lvl_1[x]) != 0]]
+            rel_bnd_fluxes_lvl_1 = bnd_fluxes_lvl_1.loc[[x for x in bnd_fluxes_lvl_1.index if round(bnd_fluxes_lvl_1[x]) != 0]]
+            print('number of internal rxns used (lvl_1): ',(round(int_fluxes_lvl_1)!=0).sum())
+            print('number of boundary rxns used (lvl_1): ',(round(bnd_fluxes_lvl_1)!=0).sum())
+            print('int_fluxes (lvl_1): ',rel_int_fluxes_lvl_1.to_markdown())
+            print('bnd_fluxes (lvl_1): ',rel_bnd_fluxes_lvl_1.to_markdown())
 
-            print('starting optimization lvl_3...',rel_int_fluxes_lvl_2.index)
-            rxns_lvl_3 = [x for x in mdl.reactions if x.id in list(rel_int_fluxes_lvl_2.index)]
-            for rxn in [x for x in mdl.reactions if x not in rxns_lvl_3 and x not in mdl.boundary]:
-                mdl.reactions.get_by_id(rxn.id).lower_bound = 0
-                mdl.reactions.get_by_id(rxn.id).upper_bound = 0
+            print('starting optimization lvl_3...')
+            rxns_lvl_3 = [x for x in mdl.reactions if x.id in list(rel_int_fluxes_lvl_1.index)]
+            # for rxn in [x for x in mdl.reactions if x not in rxns_lvl_3 and x not in mdl.boundary]:
+            #     mdl.reactions.get_by_id(rxn.id).lower_bound = 0
+            #     mdl.reactions.get_by_id(rxn.id).upper_bound = 0
             print('finished restricting to relevant reactions')
-
-            # 4. If small gas metas are being produced and consumed
-            # small_gas_metas_circ = {}
-            # small_gas_metas = [mdl.metabolites.get_by_id(x) for x in self.__small_gas_metas]
-            # # 4.1 Prevents production of small gas metabolites if exchange is producing, vice versa
-            # small_gas_meta_exchange_dir = {}
-            # print('test3',rel_bnd_fluxes_lvl_2.index)
-            # print('test2',rel_bnd_fluxes_lvl_2.index.values)
-            # print('test',[x for x in small_gas_metas if 'SK_'+x.id in list(rel_bnd_fluxes_lvl_2.index.values)])
-            # for small_meta in [x for x in small_gas_metas if 'SK_'+x.id in list(rel_bnd_fluxes_lvl_2.index.values)]:
-            #     if rel_bnd_fluxes_lvl_2.loc['SK_'+small_meta.id] > 0:
-            #         small_gas_meta_exchange_dir[small_meta.id] = 'out'
-            #     elif rel_bnd_fluxes_lvl_2.loc['SK_'+small_meta.id] < 0:
-            #         small_gas_meta_exchange_dir[small_meta.id] = 'in'
-            # print('rxns that are edited',small_gas_meta_exchange_dir,[x for x in rxns_lvl_2 if 'SK_' not in x.id])
-            # for rxn in [x for x in rxns_lvl_2 if 'SK_' not in x.id]:
-            #     stoich = rxn.metabolites
-            #     subs = []
-            #     prods = []
-            #     print('stoich',list(stoich.keys()))
-            #     for key in list(stoich.keys()):
-            #         if stoich[key] > 0:
-            #             prods.append(key.id)
-            #         elif stoich[key] < 0:
-            #             subs.append(key.id)
-            #     for meta in [x for x in small_gas_metas if x.id in list(small_gas_meta_exchange_dir.keys())]:
-            #         print('rxn.id',meta.id,rxn.id,subs,prods,small_gas_meta_exchange_dir[meta.id])
-            #         if rxn.id not in list(small_gas_metas_circ.keys()):
-            #             small_gas_metas_circ[rxn.id] = []
-            #         if small_gas_meta_exchange_dir[meta.id] == 'in':
-            #             if meta.id in prods:
-            #                 small_gas_metas_circ[rxn.id].append('upper')
-            #             elif meta.id in subs:
-            #                 small_gas_metas_circ[rxn.id].append('lower')
-            #         elif small_gas_meta_exchange_dir[meta.id] == 'out':
-            #             if meta.id in prods:
-            #                 small_gas_metas_circ[rxn.id].append('lower')
-            #             elif meta.id in subs:
-            #                 small_gas_metas_circ[rxn.id].append('upper')
-
-            # print('restricting fluxes for small gas metas',small_gas_metas_circ)
-            # if len(list(small_gas_metas_circ.keys())) > 0:
-            #     for key in list(small_gas_metas_circ.keys()):
-            #         if 'upper' in small_gas_metas_circ[key]:
-            #             mdl.reactions.get_by_id(key).lower_bound = 0
-            #         elif 'lower' in small_gas_metas_circ[key]:
-            #             mdl.reactions.get_by_id(key).upper_bound = 0
 
             # 4.1 choose the production pathway of target meta that generates the highest yield
             max_target_meta_prod_rxn = {}
             for rxn in [x for x in rxns_lvl_3 if 'SK_' not in x.id]:
                 if objective_meta_entry in list(map(lambda y: y.id,list(rxn.metabolites.keys()))):
-                    max_target_meta_prod_rxn[rxn.id] = abs(rel_int_fluxes_lvl_2.loc[rxn.id])
+                    max_target_meta_prod_rxn[rxn.id] = abs(rel_int_fluxes_lvl_1.loc[rxn.id])
                     print('max',max_target_meta_prod_rxn)
 
             max_prod_rxn_ids = list(max_target_meta_prod_rxn.keys())
@@ -710,10 +595,6 @@ class MetabolicPathwayNetworkGraph:
                 print('number of boundary rxns used (lvl_3): ',(round(bnd_fluxes_lvl_3)!=0).sum())
                 print('int_fluxes (lvl_3): ',rel_int_fluxes_lvl_3.to_markdown())
                 print('bnd_fluxes (lvl_3): ',rel_bnd_fluxes_lvl_3.to_markdown())
-
-        # Compare balanced networks that get to target metabolite from each given substrate, try to consolidate into most efficient 
-        # pathway that uses some combination of all of the substrate metabolites
-
         return
 
     # balances reaction network
