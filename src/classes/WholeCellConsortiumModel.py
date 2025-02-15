@@ -23,7 +23,7 @@ from src.classes.components.MPNG_Reaction import MPNG_Reaction
 from src.classes.components.MPNG_Enzyme import MPNG_Enzyme
 
 class WholeCellConsortiumModel:
-    def __init__(self):
+    def __init__(self,valid_cofactors:dict[str,bool]):
         self.__metabolites: dict[str,MPNG_Metabolite] = {}
         self.__reactions: dict[str,MPNG_Reaction] = {}
         self.__enzymes: dict[str,MPNG_Enzyme] = {}
@@ -62,14 +62,14 @@ class WholeCellConsortiumModel:
         self.__graphs: dict[str,MetabolicPathwayNetworkGraph] = {}
         self.__whole_KEGG_graph = nx.DiGraph()
 
-        self.__excluded_metabolite_entries = ['C00002','C00008']
+        self.__excluded_metabolite_entries = ['C00002','C00008'] + [x for x in list(valid_cofactors.keys()) if not valid_cofactors[x]]
         for meta in list(self.__metabolites.values()):
             if meta.generic:
                 self.__excluded_metabolite_entries.append(meta.entry)
 
-        for idx,x in enumerate(self.__get_reactions('all')):
+        for x in self.__get_reactions('all'):
             meta_ids = list(map(lambda y: y.id,list(x.stoich.keys())))
-            if all([z not in meta_ids for z in self.__excluded_metabolite_entries]):
+            if all([z not in meta_ids and 'G' not in z for z in self.__excluded_metabolite_entries]):
                 self.add_reaction(x)
 
         # this is set based on manual curation of KEGG BRITE heirarchy
@@ -273,7 +273,7 @@ class WholeCellConsortiumModel:
         password = hashlib.sha256("b3br?B$iDjpeJm77".encode("utf-8")).hexdigest()
         client = Client(wsdl)
         # for enz in list(map(lambda x: x.entry, list(self.__enzymes.values()))):
-        for enz in ['1.1.1.2']:
+        for enz in ['1.6.3.2']:
             # logic:
             # 1. for each reaction that each enzyme catalyzes, are they reversible?
             #   1.a. Track this in MPNG_Reaction

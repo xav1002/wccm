@@ -322,7 +322,10 @@ class MetabolicPathwayNetworkGraph:
         shortest_paths = [x for x in shortest_paths if len(x) >= min_enzyme_ct*2+1]
         return shortest_paths
 
-    def __balance_candidate_networks(self,candidate_paths:list[list[str]],objective_meta_entry:str,substrate_meta_entries:list[str]):
+    def __balance_candidate_networks(self,
+                                     candidate_paths:list[list[str]],
+                                     objective_meta_entry:str,
+                                     substrate_meta_entries:list[str]):
         # 1. Try to generate any solution from COBRA model while minimizing total flux - can modify this to use different constraint to obtain optimal solution
         bnd_meta_entries = substrate_meta_entries+[objective_meta_entry]
         print('number of candidate paths: ',len(candidate_paths),candidate_paths)
@@ -391,8 +394,8 @@ class MetabolicPathwayNetworkGraph:
 
             # 2.2 Create optimization for objective metabolite exchange reaction
             rxn: Reaction = mdl.reactions.get_by_id('SK_'+objective_meta_entry)
-            # obj_weight = len(mdl.reactions)/1200
-            obj_weight = 15
+            obj_weight = len(mdl.reactions)
+            # obj_weight = 100
             obj_dict[rxn.forward_variable] = obj_weight
             obj_dict[rxn.reverse_variable] = -obj_weight
 
@@ -400,7 +403,7 @@ class MetabolicPathwayNetworkGraph:
             substrate_opt_vars = []
             for sub_meta_entry in substrate_meta_entries:
                 rxn: Reaction = mdl.reactions.get_by_id('SK_'+sub_meta_entry)
-                obj_dict[rxn.forward_variable] = obj_weight
+                obj_dict[rxn.forward_variable] = -obj_weight
                 obj_dict[rxn.reverse_variable] = obj_weight
                 substrate_opt_vars.append(rxn.forward_variable)
                 substrate_opt_vars.append(rxn.reverse_variable)
@@ -461,20 +464,21 @@ class MetabolicPathwayNetworkGraph:
                     print('equilibrator warning: ',e)
                     print('abs dGr is assumed negative here')
 
-            dGr_max = max(list(dGr_dict.values()))
-            for rxn in list(dGr_dict.keys()):
-                if dGr_dict[rxn] >= 0:
-                    dGr_val = dGr_dict[rxn]/dGr_max
-                else:
-                    dGr_val = 0
-                print('test',dGr_val)
-                new_var = mdl.problem.Variable('abs_dGr_'+rxn.id)
-                new_constraint = mdl.problem.Constraint(rxn.forward_variable*dGr_val + rxn.reverse_variable*dGr_val - new_var,
-                                        name='abs_dGr_constraint_'+rxn.id,
-                                        ub=0,
-                                        lb=0)
-                mdl.add_cons_vars([new_var,new_constraint])
-                obj_dict[new_var] = -1
+            if len(rxns_lvl_2) > 0:
+                dGr_max = max(list(dGr_dict.values()))
+                for rxn in list(dGr_dict.keys()):
+                    if dGr_dict[rxn] >= 0:
+                        dGr_val = dGr_dict[rxn]/dGr_max
+                    else:
+                        dGr_val = 0
+                    print('test',dGr_val)
+                    new_var = mdl.problem.Variable('abs_dGr_'+rxn.id)
+                    new_constraint = mdl.problem.Constraint(rxn.forward_variable*dGr_val + rxn.reverse_variable*dGr_val - new_var,
+                                            name='abs_dGr_constraint_'+rxn.id,
+                                            ub=0,
+                                            lb=0)
+                    mdl.add_cons_vars([new_var,new_constraint])
+                    obj_dict[new_var] = -1
 
             # print('removing total flux minimization variables and constraints...')
             # # mdl.remove_cons_vars([tot_flux_vars,tot_flux_consts])
@@ -557,7 +561,7 @@ class MetabolicPathwayNetworkGraph:
             #     mdl.reactions.get_by_id(rxn.id).upper_bound = 0
             print('finished restricting to relevant reactions')
 
-            # 4.1 choose the production pathway of target meta that generates the highest yield
+            # 4.1 choose the production pathway of target meta that generates the highest yield for each metabolite
             max_target_meta_prod_rxn = {}
             for rxn in [x for x in rxns_lvl_3 if 'SK_' not in x.id]:
                 if objective_meta_entry in list(map(lambda y: y.id,list(rxn.metabolites.keys()))):
