@@ -1,0 +1,3 @@
+[submodule "src/catpred_pipeline/catpred"]
+	path = src/catpred_pipeline/catpred
+	url = https://github.com/maranasgroup/CatPred.git
