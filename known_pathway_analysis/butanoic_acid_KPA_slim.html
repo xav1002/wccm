@@ -1,0 +1,167 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        
+            <script src="lib/bindings/utils.js"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" integrity="sha512-WgxfT5LWjfszlPHXRmBWHkV2eceiWTOBvrKCNbdgDYTHrT2AeLCGbF4sZlZw3UMN3WtL0tGUoIAKsu8mllg/XA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js" integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+            
+        
+<center>
+<h1></h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+        <link
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6"
+          crossorigin="anonymous"
+        />
+        <script
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+          crossorigin="anonymous"
+        ></script>
+
+
+        <center>
+          <h1></h1>
+        </center>
+        <style type="text/css">
+
+             #mynetwork {
+                 width: 100%;
+                 height: 600px;
+                 background-color: #ffffff;
+                 border: 1px solid lightgray;
+                 position: relative;
+                 float: left;
+             }
+
+             
+
+             
+             #config {
+                 float: left;
+                 width: 400px;
+                 height: 600px;
+             }
+             
+
+             
+        </style>
+    </head>
+
+
+    <body>
+        <div class="card" style="width: 100%">
+            
+            
+            <div id="mynetwork" class="card-body"></div>
+        </div>
+
+        
+        
+            <div id="config"></div>
+        
+
+        <script type="text/javascript">
+
+              // initialize global variables.
+              var edges;
+              var nodes;
+              var allNodes;
+              var allEdges;
+              var nodeColors;
+              var originalNodes;
+              var network;
+              var container;
+              var options, data;
+              var filter = {
+                  item : '',
+                  property : '',
+                  value : []
+              };
+
+              
+
+              
+
+              // This method is responsible for drawing the graph, returns the drawn network
+              function drawGraph() {
+                  var container = document.getElementById('mynetwork');
+
+                  
+
+                  // parsing and collecting nodes and edges from the python
+                  nodes = new vis.DataSet([{"color": "#97c2fc", "id": "2.3.1.9", "label": "2.3.1.9; enz_f: 100", "shape": "box"}, {"color": "#97c2fc", "id": "C00024", "image": "https://rest.kegg.jp/get/C00024/image", "label": "Acetyl-CoA", "shape": "image"}, {"color": "#97c2fc", "id": "C00010_0", "image": "https://rest.kegg.jp/get/C00010/image", "label": "CoA", "shape": "image"}, {"color": "#97c2fc", "id": "C00332", "image": "https://rest.kegg.jp/get/C00332/image", "label": "Acetoacetyl-CoA", "shape": "image"}, {"color": "#97c2fc", "id": "1.1.1.35", "label": "1.1.1.35; enz_f: 100", "shape": "box"}, {"color": "#97c2fc", "id": "C01144", "image": "https://rest.kegg.jp/get/C01144/image", "label": "(S)-3-Hydroxybutanoyl-CoA", "shape": "image"}, {"color": "#97c2fc", "id": "C00003_1", "image": "https://rest.kegg.jp/get/C00003/image", "label": "NAD+", "shape": "image"}, {"color": "#97c2fc", "id": "C00004_1", "image": "https://rest.kegg.jp/get/C00004/image", "label": "NADH", "shape": "image"}, {"color": "#97c2fc", "id": "C00080_1", "image": "https://rest.kegg.jp/get/C00080/image", "label": "H+", "shape": "image"}, {"color": "#97c2fc", "id": "4.2.1.17", "label": "4.2.1.17; enz_f: 100", "shape": "box"}, {"color": "#97c2fc", "id": "C00877", "image": "https://rest.kegg.jp/get/C00877/image", "label": "Crotonoyl-CoA", "shape": "image"}, {"color": "#97c2fc", "id": "C00001_2", "image": "https://rest.kegg.jp/get/C00001/image", "label": "H2O", "shape": "image"}, {"color": "#97c2fc", "id": "1.3.1.109", "label": "1.3.1.109; enz_f: 100", "shape": "box"}, {"color": "#97c2fc", "id": "C00136", "image": "https://rest.kegg.jp/get/C00136/image", "label": "Butanoyl-CoA", "shape": "image"}, {"color": "#97c2fc", "id": "C00138_3", "image": "https://rest.kegg.jp/get/C00138/image", "label": "Reduced ferredoxin", "shape": "image"}, {"color": "#97c2fc", "id": "C00139_3", "image": "https://rest.kegg.jp/get/C00139/image", "label": "Oxidized ferredoxin", "shape": "image"}, {"color": "#97c2fc", "id": "C00003_3", "image": "https://rest.kegg.jp/get/C00003/image", "label": "NAD+", "shape": "image"}, {"color": "#97c2fc", "id": "C00004_3", "image": "https://rest.kegg.jp/get/C00004/image", "label": "NADH", "shape": "image"}, {"color": "#97c2fc", "id": "2.8.3.8", "label": "2.8.3.8; enz_f: 100", "shape": "box"}, {"color": "#97c2fc", "id": "C00033", "image": "https://rest.kegg.jp/get/C00033/image", "label": "Acetate", "shape": "image"}, {"color": "#97c2fc", "id": "C00246", "image": "https://rest.kegg.jp/get/C00246/image", "label": "Butanoic acid", "shape": "image"}, {"color": "#97c2fc", "id": "1.17.1.9", "label": "1.17.1.9; enz_f: 100", "shape": "box"}, {"color": "#97c2fc", "id": "C00058", "image": "https://rest.kegg.jp/get/C00058/image", "label": "Formate", "shape": "image"}, {"color": "#97c2fc", "id": "C00011_5", "image": "https://rest.kegg.jp/get/C00011/image", "label": "CO2", "shape": "image"}, {"color": "#97c2fc", "id": "C00003_5", "image": "https://rest.kegg.jp/get/C00003/image", "label": "NAD+", "shape": "image"}, {"color": "#97c2fc", "id": "C00080_5", "image": "https://rest.kegg.jp/get/C00080/image", "label": "H+", "shape": "image"}, {"color": "#97c2fc", "id": "C00004_5", "image": "https://rest.kegg.jp/get/C00004/image", "label": "NADH", "shape": "image"}, {"color": "#97c2fc", "id": "1.1.1.1", "label": "1.1.1.1; enz_f: 100", "shape": "box"}, {"color": "#97c2fc", "id": "C00469", "image": "https://rest.kegg.jp/get/C00469/image", "label": "Ethanol", "shape": "image"}, {"color": "#97c2fc", "id": "C00084", "image": "https://rest.kegg.jp/get/C00084/image", "label": "Acetaldehyde", "shape": "image"}, {"color": "#97c2fc", "id": "C00003_6", "image": "https://rest.kegg.jp/get/C00003/image", "label": "NAD+", "shape": "image"}, {"color": "#97c2fc", "id": "C00004_6", "image": "https://rest.kegg.jp/get/C00004/image", "label": "NADH", "shape": "image"}, {"color": "#97c2fc", "id": "C00080_6", "image": "https://rest.kegg.jp/get/C00080/image", "label": "H+", "shape": "image"}, {"color": "#97c2fc", "id": "1.2.1.10", "label": "1.2.1.10; enz_f: 100", "shape": "box"}, {"color": "#97c2fc", "id": "C00010_7", "image": "https://rest.kegg.jp/get/C00010/image", "label": "CoA", "shape": "image"}, {"color": "#97c2fc", "id": "C00003_7", "image": "https://rest.kegg.jp/get/C00003/image", "label": "NAD+", "shape": "image"}, {"color": "#97c2fc", "id": "C00004_7", "image": "https://rest.kegg.jp/get/C00004/image", "label": "NADH", "shape": "image"}, {"color": "#97c2fc", "id": "C00080_7", "image": "https://rest.kegg.jp/get/C00080/image", "label": "H+", "shape": "image"}, {"color": "#97c2fc", "id": "1.12.99.-", "label": "1.12.99.-; enz_f: 100", "shape": "box"}, {"color": "#97c2fc", "id": "C00282", "image": "https://rest.kegg.jp/get/C00282/image", "label": "Hydrogen", "shape": "image"}, {"color": "#97c2fc", "id": "C00138_8", "image": "https://rest.kegg.jp/get/C00138/image", "label": "Reduced ferredoxin", "shape": "image"}, {"color": "#97c2fc", "id": "C00080_8", "image": "https://rest.kegg.jp/get/C00080/image", "label": "H+", "shape": "image"}, {"color": "#97c2fc", "id": "C00139_8", "image": "https://rest.kegg.jp/get/C00139/image", "label": "Oxidized ferredoxin", "shape": "image"}]);
+                  edges = new vis.DataSet([{"arrows": "to", "from": "C00024", "label": "rxn_f: 199", "to": "2.3.1.9", "width": 3}, {"arrows": "to", "color": "red", "from": "2.3.1.9", "label": "rxn_f: 99", "to": "C00010_0"}, {"arrows": "to", "from": "2.3.1.9", "label": "rxn_f: 99", "to": "C00332", "width": 3}, {"arrows": "from", "from": "C01144", "label": "rxn_f: 99", "to": "1.1.1.35", "width": 3}, {"arrows": "from", "color": "red", "from": "C00003_1", "label": "rxn_f: 99", "to": "1.1.1.35"}, {"arrows": "from", "color": "red", "from": "1.1.1.35", "label": "rxn_f: 99", "to": "C00004_1"}, {"arrows": "from", "color": "red", "from": "1.1.1.35", "label": "rxn_f: 99", "to": "C00080_1"}, {"arrows": "from", "from": "1.1.1.35", "label": "rxn_f: 99", "to": "C00332", "width": 3}, {"arrows": "to", "from": "4.2.1.17", "label": "rxn_f: 99", "to": "C00877", "width": 3}, {"arrows": "to", "color": "red", "from": "4.2.1.17", "label": "rxn_f: 99", "to": "C00001_2"}, {"arrows": "to", "from": "C01144", "label": "rxn_f: 99", "to": "4.2.1.17", "width": 3}, {"arrows": "from", "from": "C00136", "label": "rxn_f: 100", "to": "1.3.1.109", "width": 3}, {"arrows": "from", "color": "red", "from": "C00138_3", "label": "rxn_f: 200", "to": "1.3.1.109"}, {"arrows": "from", "color": "red", "from": "1.3.1.109", "label": "rxn_f: 200", "to": "C00139_3"}, {"arrows": "from", "color": "red", "from": "C00003_3", "label": "rxn_f: 200", "to": "1.3.1.109"}, {"arrows": "from", "from": "1.3.1.109", "label": "rxn_f: 100", "to": "C00877", "width": 3}, {"arrows": "from", "color": "red", "from": "1.3.1.109", "label": "rxn_f: 200", "to": "C00004_3"}, {"arrows": "to", "from": "C00033", "label": "rxn_f: 99", "to": "2.8.3.8", "width": 3}, {"arrows": "to", "from": "2.8.3.8", "label": "rxn_f: 99", "to": "C00246", "width": 3}, {"arrows": "to", "from": "C00136", "label": "rxn_f: 99", "to": "2.8.3.8", "width": 3}, {"arrows": "to", "from": "2.8.3.8", "label": "rxn_f: 99", "to": "C00024", "width": 3}, {"arrows": "to", "from": "C00058", "label": "rxn_f: 99", "to": "1.17.1.9", "width": 3}, {"arrows": "to", "color": "red", "from": "1.17.1.9", "label": "rxn_f: 99", "to": "C00011_5"}, {"arrows": "to", "color": "red", "from": "C00003_5", "label": "rxn_f: 99", "to": "1.17.1.9"}, {"arrows": "to", "color": "red", "from": "1.17.1.9", "label": "rxn_f: 99", "to": "C00080_5"}, {"arrows": "to", "color": "red", "from": "1.17.1.9", "label": "rxn_f: 99", "to": "C00004_5"}, {"arrows": "to", "from": "C00469", "label": "rxn_f: 99", "to": "1.1.1.1", "width": 3}, {"arrows": "to", "from": "1.1.1.1", "label": "rxn_f: 99", "to": "C00084", "width": 3}, {"arrows": "to", "color": "red", "from": "C00003_6", "label": "rxn_f: 99", "to": "1.1.1.1"}, {"arrows": "to", "color": "red", "from": "1.1.1.1", "label": "rxn_f: 99", "to": "C00004_6"}, {"arrows": "to", "color": "red", "from": "1.1.1.1", "label": "rxn_f: 99", "to": "C00080_6"}, {"arrows": "to", "from": "C00084", "label": "rxn_f: 100", "to": "1.2.1.10", "width": 3}, {"arrows": "to", "color": "red", "from": "C00010_7", "label": "rxn_f: 100", "to": "1.2.1.10"}, {"arrows": "to", "color": "red", "from": "C00003_7", "label": "rxn_f: 100", "to": "1.2.1.10"}, {"arrows": "to", "from": "1.2.1.10", "label": "rxn_f: 100", "to": "C00024", "width": 3}, {"arrows": "to", "color": "red", "from": "1.2.1.10", "label": "rxn_f: 100", "to": "C00004_7"}, {"arrows": "to", "color": "red", "from": "1.2.1.10", "label": "rxn_f: 100", "to": "C00080_7"}, {"arrows": "to", "from": "1.12.99.-", "label": "rxn_f: 99", "to": "C00282", "width": 3}, {"arrows": "to", "color": "red", "from": "C00138_8", "label": "rxn_f: 199", "to": "1.12.99.-"}, {"arrows": "to", "color": "red", "from": "C00080_8", "label": "rxn_f: 199", "to": "1.12.99.-"}, {"arrows": "to", "color": "red", "from": "1.12.99.-", "label": "rxn_f: 199", "to": "C00139_8"}]);
+
+                  nodeColors = {};
+                  allNodes = nodes.get({ returnType: "Object" });
+                  for (nodeId in allNodes) {
+                    nodeColors[nodeId] = allNodes[nodeId].color;
+                  }
+                  allEdges = edges.get({ returnType: "Object" });
+                  // adding nodes and edges to the graph
+                  data = {nodes: nodes, edges: edges};
+
+                  var options = {
+    "configure": {
+        "enabled": true
+    },
+    "edges": {
+        "color": {
+            "inherit": true
+        },
+        "smooth": {
+            "enabled": true,
+            "type": "dynamic"
+        }
+    },
+    "interaction": {
+        "dragNodes": true,
+        "hideEdgesOnDrag": false,
+        "hideNodesOnDrag": false
+    },
+    "physics": {
+        "enabled": true,
+        "stabilization": {
+            "enabled": true,
+            "fit": true,
+            "iterations": 1000,
+            "onlyDynamicEdges": false,
+            "updateInterval": 50
+        }
+    }
+};
+
+                  
+
+
+                  
+                  // if this network requires displaying the configure window,
+                  // put it in its div
+                  options.configure["container"] = document.getElementById("config");
+                  
+
+                  network = new vis.Network(container, data, options);
+
+                  
+
+                  
+
+                  
+
+
+                  
+
+                  return network;
+
+              }
+              drawGraph();
+        </script>
+    </body>
+</html>
