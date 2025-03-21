@@ -1,0 +1,2 @@
+- It is best to have separate "modules" for wccm, e.g.: one for catpred, one for equilibrator, one for WCM, etc. in order to isolate dependencies
+- To run this in a Docker container, would need to do multi-stage builds
