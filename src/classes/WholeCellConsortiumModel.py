@@ -629,8 +629,6 @@ class WholeCellConsortiumModel:
             matches = list(set(enz_entries) & set(invalid_enz))
             for match in matches:
                 enz_entries.remove(match)
-            if rxn.entry == 'R00753':
-                print('worked',enz_entries)
             if all([z not in meta_ids for z in self.__excluded_metabolite_entries]) and len(enz_entries) > 0:
                 try:
                     self.__graphs[network_name].add_reaction(rxn,[self.__get_metabolites(meta) for meta in list(map(lambda x: x.id,list(rxn.stoich.keys()))) if 'G' not in meta and '(' not in meta])
@@ -644,12 +642,12 @@ class WholeCellConsortiumModel:
     def seek_optimal_network(self,
                              network_name:str,
                              objective_meta_entries:list[str],
-                             substrate_metabolite_entries:list[str],
+                             substrate_meta_entries:list[str],
                              min_enzyme_ct:int,
                              max_enzyme_ct:int) -> None:
         # 1. Find optimal network via constrained mass balance
         self.__graphs[network_name].seek_optimal_network(objective_metabolite_entry=objective_meta_entries[0],
-                                                     substrate_metabolite_entries=substrate_metabolite_entries,
+                                                     substrate_metabolite_entries=substrate_meta_entries,
                                                      min_enzyme_ct=min_enzyme_ct,
                                                      max_enzyme_ct=max_enzyme_ct)
 
@@ -664,6 +662,35 @@ class WholeCellConsortiumModel:
 
         # Task 6: visualize results
         return self.__graphs[network_name]
+    
+    def generate_defined_network(self,
+                                 network_name:str,
+                                 objective_meta_entries:list[str],
+                                 substrate_meta_entries:list[str],
+                                 reactions:list[str]):
+        
+        # Task 1: construct metabolic network connections
+        self.__graphs[network_name] = MetabolicPathwayNetworkGraph(network_name)
+
+        balancing_meta_entries = ['C00001','C00014','C00011','C00697']
+        for meta_entry in balancing_meta_entries:
+            self.__graphs[network_name].metabolites = self.__get_metabolites(meta_entry)
+            self.__graphs[network_name].add_boundary_rxn(self.__get_metabolites(meta_entry))
+        for rxn in [x for x in self.__get_reactions('all') if x.entry in reactions]:
+            meta_ids = list(map(lambda y: y.id,list(rxn.stoich.keys())))
+            if all([z not in meta_ids for z in self.__excluded_metabolite_entries]):
+                try:
+                    self.__graphs[network_name].add_reaction(rxn,[self.__get_metabolites(meta) for meta in list(map(lambda x: x.id,list(rxn.stoich.keys()))) if 'G' not in meta and '(' not in meta])
+                except Exception as e:
+                    print('meta not listed in KEGG',e)
+
+        self.__graphs[network_name].generate_COBRA_model()
+        
+        self.__graphs[network_name].generate_defined_network(objective_metabolite_entry=objective_meta_entries[0],
+                                                             substrate_metabolite_entries=substrate_meta_entries,
+                                                             reactions=reactions)
+
+        return self.__graphs[network_name]
 
     def visualize_graph(self,network_name:str) -> None:
         MPNG_net = self.__graphs[network_name]
@@ -671,6 +698,7 @@ class WholeCellConsortiumModel:
         excluded_meta_entries = [x for x in self.__common_metabolite_entries+self.__small_gas_metas_entries if x != 'C00024']
         for idx,co_rxn in enumerate(MPNG_net.COBRA_model.reactions):
             flux_val = MPNG_net.mass_balance_sln.fluxes[co_rxn.id]
+            print('flux_val',flux_val)
             # adding edges to slim graph
             if abs(round(flux_val)):
                 if len([rxn for rxn in MPNG_net.get_reactions('all') if rxn.entry == co_rxn.id]) == 0:

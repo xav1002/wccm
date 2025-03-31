@@ -312,6 +312,16 @@ class MetabolicPathwayNetworkGraph:
                 pass
         print('COBRA model ready')
 
+    def add_boundary_rxn(self,meta:MPNG_Metabolite):
+        try:
+            self.__COBRA_model.add_metabolites(Metabolite(id=meta.entry,name=meta.entry))
+            self.__COBRA_model.add_boundary(self.__COBRA_model.metabolites.get_by_id(meta.entry),type='sink',lb=0,ub=0)
+        except Exception as e:
+            print(e)
+            pass
+        print('test',self.__COBRA_model.boundary)
+        return
+
     # what are the balancing metabolites that we can introduce?
     # N: helps produce C+
     #   N2, NH4
@@ -364,7 +374,7 @@ class MetabolicPathwayNetworkGraph:
                     res[3] += redox_vals[entry]*x[idx]
 
                 res[4] = x[0] - 1000
-                res[5] = x[-2] - 500
+                # res[5] = x[-2] - 500
 
                 return np.array(res)
 
@@ -657,5 +667,61 @@ class MetabolicPathwayNetworkGraph:
         self.__calculate_equilibrium(objective_meta_entry=objective_metabolite_entry,
                                           substrate_meta_entries=substrate_metabolite_entries,
                                           overall_stoich=overall_stoich)
+
+        return self.__COBRA_model
+    
+    def generate_defined_network(self,
+                                 objective_metabolite_entry:str,
+                                 substrate_metabolite_entries:list[str],
+                                 reactions:list[str]):
+        
+        overall_stoich = self.__calculate_redox_balance(objective_meta_entry=objective_metabolite_entry,
+                                                substrate_meta_entries=substrate_metabolite_entries)
+
+        with self.__COBRA_model as mdl:
+            for key in overall_stoich.keys():
+                overall_stoich[key] = 10*(round(overall_stoich[key]/10))
+
+            print(pd.DataFrame(list(overall_stoich.items()), columns=['meta entry','flux']))
+
+            for meta_entry in list(overall_stoich.keys()):
+                if overall_stoich[meta_entry] > 0:
+                    mdl.reactions.get_by_id('SK_'+meta_entry).upper_bound = overall_stoich[meta_entry]
+                    mdl.reactions.get_by_id('SK_'+meta_entry).lower_bound = overall_stoich[meta_entry]
+                else:
+                    mdl.reactions.get_by_id('SK_'+meta_entry).lower_bound = overall_stoich[meta_entry]
+                    mdl.reactions.get_by_id('SK_'+meta_entry).upper_bound = overall_stoich[meta_entry]
+
+            obj_dict = {}
+            # 2.4 Create optimization objective for number of total sum of flux absolute values
+            tot_flux_vars = []
+            tot_flux_consts = []
+            for rxn in [x for x in mdl.reactions if x.id not in list(map(lambda y: 'SK_'+y,self.__small_gas_meta_entries))]:
+                new_var = mdl.problem.Variable('rxn_var_'+rxn.id)
+                new_constraint = mdl.problem.Constraint(rxn.forward_variable + rxn.reverse_variable - new_var,
+                                        name='rxn_constraint_'+rxn.id,
+                                        ub=0,
+                                        lb=0)
+                tot_flux_vars.append(new_var)
+                tot_flux_consts.append(new_constraint)
+                mdl.add_cons_vars([new_var,new_constraint])
+                obj_dict[new_var] = 1
+
+            # 2.7 Print COBRA model metrics and solve level 1
+            print('obj_dict lvl_1',obj_dict)
+            mdl.objective = mdl.problem.Objective(Zero, sloppy=False, direction="max")
+            mdl.solver.objective.set_linear_coefficients(obj_dict)
+            lvl_1_res = self.mass_balance_sln = mdl.optimize()
+            print('objective_value lvl_1',lvl_1_res.objective_value)
+
+            fluxes_lvl_1 = self.mass_balance_sln.fluxes
+            int_fluxes_lvl_1 = fluxes_lvl_1.loc[[x for x in fluxes_lvl_1.index if 'SK_' not in x]]
+            bnd_fluxes_lvl_1 = fluxes_lvl_1.loc[[x for x in fluxes_lvl_1.index if 'SK_' in x]]
+            rel_int_fluxes_lvl_1 = int_fluxes_lvl_1.loc[[x for x in int_fluxes_lvl_1.index if round(int_fluxes_lvl_1[x]) != 0]]
+            rel_bnd_fluxes_lvl_1 = bnd_fluxes_lvl_1.loc[[x for x in bnd_fluxes_lvl_1.index if round(bnd_fluxes_lvl_1[x]) != 0]]
+            print('number of internal rxns used (lvl_1): ',(round(int_fluxes_lvl_1)!=0).sum())
+            print('number of boundary rxns used (lvl_1): ',(round(bnd_fluxes_lvl_1)!=0).sum())
+            print('int_fluxes (lvl_1): ',rel_int_fluxes_lvl_1.to_markdown())
+            print('bnd_fluxes (lvl_1): ',rel_bnd_fluxes_lvl_1.to_markdown())
 
         return self.__COBRA_model
